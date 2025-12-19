@@ -1,0 +1,29 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "IERC20",
+    "IERC",
+    "IPermit2",
+    "Chainlink",
+    "Permit2",
+    "PermitSingle",
+    "PermitBatch",
+    "PermitTransferFrom",
+    "IAllowanceTransfer",
+    "ISignatureTransfer",
+    "Uniswap",
+    "1inch",
+    "balBefore",
+    "balAfter",
+    "sweepAndSwap",
+    "PermitBatch",
+    "abi",
+    "EIP",
+    "Reentrancy",
+    "keccak",
+    "keccak256"
+  ],
+  "ignoreRegExpList": ["@nomiclabs"],
+  "ignorePaths": ["node_modules/**", "dist/**"]
+}

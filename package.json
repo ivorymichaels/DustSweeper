@@ -1,0 +1,20 @@
+{
+  "name": "dapp-sweeper",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "hardhat test",
+    "deploy": "hardhat run scripts/deploy.js --network ${NETWORK:-hardhat}",
+    "lint": "echo \"No linter configured\""
+  },
+  "devDependencies": {
+    "hardhat": "^2.17.0",
+    "@nomiclabs/hardhat-ethers": "^2.0.6",
+    "@nomiclabs/hardhat-waffle": "^2.0.3",
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0",
+    "ethers": "^5.7.2",
+    "dotenv": "^16.0.0"
+  },
+  "dependencies": {}
+}

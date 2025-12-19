@@ -1,0 +1,46 @@
+name: CI & Deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install root dependencies
+        run: npm ci
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci --legacy-peer-deps
+      - name: Compile contracts
+        run: npx hardhat compile
+      - name: Run tests
+        run: npx hardhat test
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: npm ci
+      - name: Deploy to testnets
+        env:
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          MUMBAI_RPC_URL: ${{ secrets.MUMBAI_RPC_URL }}
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+          AGGREGATOR_ADDRESS_MUMBAI: ${{ secrets.AGGREGATOR_ADDRESS_MUMBAI }}
+          PRICE_ORACLE_ADDRESS_MUMBAI: ${{ secrets.PRICE_ORACLE_ADDRESS_MUMBAI }}
+          AGGREGATOR_ADDRESS_SEPOLIA: ${{ secrets.AGGREGATOR_ADDRESS_SEPOLIA }}
+          PRICE_ORACLE_ADDRESS_SEPOLIA: ${{ secrets.PRICE_ORACLE_ADDRESS_SEPOLIA }}
+        run: node scripts/deploy-testnets.js
