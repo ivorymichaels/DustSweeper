@@ -4,7 +4,7 @@ import TxStatus from '../components/TxStatus'
 import ErrorBanner from '../components/ErrorBanner'
 import { getPriceUSD } from '../lib/price'
 import axios from 'axios'
-import { buildPermit2Signature } from '../lib/permitBuilder'
+import { buildPermit2Signature, buildPermit2BatchSignature } from '../lib/permitBuilder'
 import { ethers } from 'ethers'
 import { buildSwapTx } from '../lib/aggregator'
 import ConfirmationModal from '../components/ConfirmationModal'
@@ -103,7 +103,7 @@ export default function Sweeper() {
             : ethers.constants.AddressZero
 
           const swap = await buildSwapTx(addr, toAddr, amount, chainId, { fromAddress: providerOpts?.address, slippage: 1 })
-          swapCalls.push({ token: addr, swap })
+          swapCalls.push({ token: addr, swap, amount })
         } catch (err) {
           // collect error but continue
           swapCalls.push({ token: addr, error: String(err) })
@@ -191,15 +191,24 @@ export default function Sweeper() {
 
           // collect arrays
           const tokensArr = swapCalls.map(s=>s.token)
+          const amountsArr = swapCalls.map(s=> s.amount ? s.amount.toString() : '0')
           const minPrices = tokensArr.map(_=>0)
           const maxPrices = tokensArr.map(_=>ethers.constants.MaxUint256)
           const priceDecimals = 8
-          const targetAddr = targetToken === 'USDC' ? (chainId===1? '0xA0b8...': '0x2791...') : ethers.constants.AddressZero
+          // Resolve target token address from token list or fall back to known USDC addresses per chain
+          const USDC_ADDRS = { 1: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', 137: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174' }
+          const targetObj = tokens.find(t => t.symbol === targetToken)
+          const targetAddr = targetObj?.address || (targetToken === 'USDC' ? (USDC_ADDRS[chainId] || ethers.constants.AddressZero) : ethers.constants.AddressZero)
           // build swapCallData
           const swapCallData = swapCalls.map(s => s.swap ? s.swap.swap.data || s.swap.data || s.swap.raw?.tx?.data : '0x')
           // prepare permit calldata from builder
           const sel = tokensArr
-          const permitObj = await buildPermit2Signature(sel)
+          let permitObj
+          if (sel.length > 1) {
+            permitObj = await buildPermit2BatchSignature(sel, { signer: providerOpts?.signer, permit2Address, spender: sweeperAddress, chainId, amounts: amountsArr })
+          } else {
+            permitObj = await buildPermit2Signature(sel, { signer: providerOpts?.signer, permit2Address, spender: sweeperAddress, chainId, amount: amountsArr[0] })
+          }
           const permitCalldata = permitObj?.permitCalldata || '0x'
 
           // sum native values

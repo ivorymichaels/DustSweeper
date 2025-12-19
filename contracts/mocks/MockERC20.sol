@@ -33,6 +33,12 @@ contract MockERC20 {
         return true;
     }
 
+    // Test helper: set allowance on behalf of owner (only for mocks/tests)
+    function setAllowance(address owner, address spender, uint256 amount) external returns (bool) {
+        allowance[owner][spender] = amount;
+        return true;
+    }
+
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         if (from != msg.sender) {
             uint256 allowed = allowance[from][msg.sender];
