@@ -37,10 +37,10 @@ jobs:
       - name: Deploy to testnets
         env:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          MUMBAI_RPC_URL: ${{ secrets.MUMBAI_RPC_URL }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
           SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
-          AGGREGATOR_ADDRESS_MUMBAI: ${{ secrets.AGGREGATOR_ADDRESS_MUMBAI }}
-          PRICE_ORACLE_ADDRESS_MUMBAI: ${{ secrets.PRICE_ORACLE_ADDRESS_MUMBAI }}
+          AGGREGATOR_ADDRESS_BASE: ${{ secrets.AGGREGATOR_ADDRESS_BASE }}
+          PRICE_ORACLE_ADDRESS_BASE: ${{ secrets.PRICE_ORACLE_ADDRESS_BASE }}
           AGGREGATOR_ADDRESS_SEPOLIA: ${{ secrets.AGGREGATOR_ADDRESS_SEPOLIA }}
           PRICE_ORACLE_ADDRESS_SEPOLIA: ${{ secrets.PRICE_ORACLE_ADDRESS_SEPOLIA }}
         run: node scripts/deploy-testnets.js
