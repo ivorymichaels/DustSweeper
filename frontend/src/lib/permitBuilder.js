@@ -13,10 +13,10 @@
 //   and nonce=0 unless provided in opts. These choices may need to be adapted for your Permit2 implementation.
 // - If the exact Permit2 ABI/types differ in your deployment, adjust `TYPES` and the ABI-encoder below.
 
-import { ethers } from 'ethers'
+import * as ethers from 'ethers'
 
-// max uint160
-const MAX_UINT160 = ethers.BigNumber.from(2).pow(160).sub(1)
+// max uint160 as bigint
+const MAX_UINT160 = (2n ** 160n) - 1n
 
 /**
  * Build Permit2 calldata for a single token using EIP-712 signature
@@ -41,10 +41,10 @@ export async function buildPermit2Signature(tokenAddresses = [], opts = {}) {
   const network = opts.chainId ? { chainId: opts.chainId } : await signer.provider.getNetwork()
   const chainId = network.chainId
 
-  const amount = opts.amount ? ethers.BigNumber.from(opts.amount) : MAX_UINT160
+  const amount = opts.amount ? BigInt(opts.amount.toString ? opts.amount.toString() : String(opts.amount)) : MAX_UINT160
   const expiration = Math.floor(Date.now() / 1000) + (opts.expirationSecondsFromNow || 60 * 60 * 24 * 30)
   const nonce = opts.nonce != null ? opts.nonce : 0
-  const spender = opts.spender || opts.sweeperAddress || ethers.constants.AddressZero
+  const spender = opts.spender || opts.sweeperAddress || ethers.ZeroAddress
 
   // EIP-712 domain — matches Uniswap Permit2 expected domain
   const domain = {
@@ -85,7 +85,7 @@ export async function buildPermit2Signature(tokenAddresses = [], opts = {}) {
   }
 
   // Build ABI calldata for: permit(address owner, (address,uint160,uint48,uint48,address) permit, bytes signature)
-  const iface = new ethers.utils.Interface([
+  const iface = new ethers.Interface([
     'function permit(address owner, tuple(address token, uint160 amount, uint48 expiration, uint48 nonce, address spender) permit, bytes signature)'
   ])
 
@@ -120,10 +120,10 @@ export async function buildPermit2BatchSignature(tokenAddresses = [], opts = {})
 
   const defaultExpiration = Math.floor(Date.now() / 1000) + (opts.expirationSecondsFromNow || 60 * 60 * 24 * 30)
   const defaultNonce = opts.nonce != null ? opts.nonce : 0
-  const defaultSpender = opts.spender || opts.sweeperAddress || ethers.constants.AddressZero
+  const defaultSpender = opts.spender || opts.sweeperAddress || ethers.ZeroAddress
 
   for (let i = 0; i < count; i++) {
-    const amt = opts.amounts && opts.amounts[i] ? ethers.BigNumber.from(opts.amounts[i]) : MAX_UINT160
+    const amt = opts.amounts && opts.amounts[i] ? BigInt(opts.amounts[i].toString ? opts.amounts[i].toString() : String(opts.amounts[i])) : MAX_UINT160
     amounts.push(amt.toString())
     expirations.push(defaultExpiration)
     nonces.push(defaultNonce)
@@ -166,7 +166,7 @@ export async function buildPermit2BatchSignature(tokenAddresses = [], opts = {})
   }
 
   // Build ABI calldata for: permit(address owner, tuple(address[] tokens, uint160[] amounts, uint48[] expirations, uint48[] nonces, address[] spenders) permit, bytes signature)
-  const iface = new ethers.utils.Interface([
+  const iface = new ethers.Interface([
     'function permit(address owner, tuple(address[] tokens, uint160[] amounts, uint48[] expirations, uint48[] nonces, address[] spenders) permit, bytes signature)'
   ])
 

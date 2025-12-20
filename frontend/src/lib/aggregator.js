@@ -17,21 +17,21 @@
  */
 
 import axios from 'axios'
-import { ethers } from 'ethers'
+import * as ethers from 'ethers'
 
 const ONEINCH_BASE = 'https://api.1inch.io/v5.0'
 const NATIVE_FLAG = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'
 
 function normalizeAddress(addr) {
   if (!addr) return addr
-  try { if (addr === ethers.constants.AddressZero) return NATIVE_FLAG } catch (e) {}
+  try { if (addr === ethers.ZeroAddress) return NATIVE_FLAG } catch (e) {}
   return addr
 }
 
 function isNativeFor1inch(addr) {
   if (!addr) return false
   const a = addr.toLowerCase()
-  return a === ethers.constants.AddressZero || a === NATIVE_FLAG.toLowerCase()
+  return a === ethers.ZeroAddress || a === NATIVE_FLAG.toLowerCase()
 }
 
 /**
@@ -94,7 +94,7 @@ export async function buildSwapTx(fromToken, toToken, amount, chainId = 1, opts 
     if (!fromIsNative && fromAddress) {
       const spender = tx.to
       const abi = ["function approve(address spender, uint256 amount) public returns (bool)"]
-      const iface = new ethers.utils.Interface(abi)
+      const iface = new ethers.Interface(abi)
       approveData = iface.encodeFunctionData('approve', [spender, String(amount)])
       approveNeeded = true
     }

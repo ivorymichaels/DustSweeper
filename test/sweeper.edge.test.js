@@ -16,44 +16,44 @@ describe("Sweeper - edge cases (reentrancy, gas, many tokens)", function () {
     MockPriceOracle = await ethers.getContractFactory("MockPriceOracle");
 
     permit2 = await MockPermit2.deploy();
-    await permit2.deployed();
+      await permit2.waitForDeployment();
 
     aggregatorReentrant = await MockAggregatorReentrant.deploy();
-    await aggregatorReentrant.deployed();
+      await aggregatorReentrant.waitForDeployment();
 
     aggregator = await MockAggregator.deploy();
-    await aggregator.deployed();
+      await aggregator.waitForDeployment();
 
     priceOracle = await MockPriceOracle.deploy();
-    await priceOracle.deployed();
+      await priceOracle.waitForDeployment();
 
     const Sweeper = await ethers.getContractFactory("Sweeper");
-    sweeper = await Sweeper.deploy(aggregator.address, ethers.constants.AddressZero);
-    await sweeper.deployed();
+    sweeper = await Sweeper.deploy(aggregator.target, ethers.ZeroAddress);
+      await sweeper.waitForDeployment();
   });
 
   it("blocks reentrancy attempts from an aggregator", async () => {
     const token = await MockERC20.deploy("TA", "TA");
-    await token.deployed();
-    await token.mint(user.address, ethers.utils.parseEther("100"));
-    await token.connect(user).approve(permit2.address, ethers.utils.parseEther("100"));
+      await token.waitForDeployment();
+    await token.mint(await user.getAddress(), ethers.parseEther("100"));
+    await token.connect(user).approve(permit2.target, ethers.parseEther("100"));
 
     // Deploy a Sweeper instance that points to the reentrant aggregator
-    await sweeper.setAggregator(aggregatorReentrant.address);
+    await sweeper.setAggregator(aggregatorReentrant.target);
 
-    const ifaceAgg = new ethers.utils.Interface(["function swap(address,address,uint256,uint256) returns (uint256)"]);
-    const data = ifaceAgg.encodeFunctionData("swap", [token.address, token.address, ethers.utils.parseEther("1"), 0]);
+    const ifaceAgg = new ethers.Interface(["function swap(address,address,uint256,uint256) returns (uint256)"]);
+    const data = ifaceAgg.encodeFunctionData("swap", [token.target, token.target, ethers.parseEther("1"), 0]);
 
     // Call should revert (aggregator call will fail and Sweeper will revert with AGGREGATOR_CALL_FAILED)
     await expect(
       sweeper.connect(user).sweepAndSwap(
-        permit2.address,
+        permit2.target,
         "0x",
-        [token.address],
+        [token.target],
         [0],
-        [ethers.constants.MaxUint256],
+        [ethers.MaxUint256],
         8,
-        token.address,
+        token.target,
         [data],
         false
       )
@@ -67,12 +67,12 @@ describe("Sweeper - edge cases (reentrancy, gas, many tokens)", function () {
     const MockToken = MockERC20;
     for (let i = 0; i < 40; i++) {
       const t = await MockToken.deploy("TK", "TK");
-      await t.deployed();
-      await t.mint(user.address, ethers.utils.parseEther("1"));
-      await t.connect(user).approve(permit2.address, ethers.utils.parseEther("1"));
-      tokens.push(t.address);
-      const ifaceAgg = new ethers.utils.Interface(["function swap(address,address,uint256,uint256) returns (uint256)"]);
-      datas.push(ifaceAgg.encodeFunctionData("swap", [t.address, t.address, ethers.utils.parseEther("1"), 0]));
+        await t.waitForDeployment();
+      await t.mint(await user.getAddress(), ethers.parseEther("1"));
+      await t.connect(user).approve(permit2.target, ethers.parseEther("1"));
+      tokens.push(t.target);
+      const ifaceAgg = new ethers.Interface(["function swap(address,address,uint256,uint256) returns (uint256)"]);
+      datas.push(ifaceAgg.encodeFunctionData("swap", [t.target, t.target, ethers.parseEther("1"), 0]));
     }
 
     // Attempt to send the transaction with an intentionally too-small gas limit. The
@@ -80,11 +80,11 @@ describe("Sweeper - edge cases (reentrancy, gas, many tokens)", function () {
     // is higher than supplied. Assert that the submission fails for that reason.
     try {
       await sweeper.connect(user).sweepAndSwap(
-        permit2.address,
+        permit2.target,
         "0x",
         tokens,
         new Array(tokens.length).fill(0),
-        new Array(tokens.length).fill(ethers.constants.MaxUint256),
+        new Array(tokens.length).fill(ethers.MaxUint256),
         8,
         tokens[0],
         datas,
@@ -103,28 +103,28 @@ describe("Sweeper - edge cases (reentrancy, gas, many tokens)", function () {
 
   it("handles many tokens in a single call (scale test)", async () => {
     // Point Sweeper to standard aggregating mock
-    await sweeper.setAggregator(aggregator.address);
+    await sweeper.setAggregator(aggregator.target);
 
     const tokens = [];
     const datas = [];
     for (let i = 0; i < 20; i++) {
       const t = await MockERC20.deploy("TK", "TK");
-      await t.deployed();
-      await t.mint(user.address, ethers.utils.parseEther("1"));
-      await t.connect(user).approve(permit2.address, ethers.utils.parseEther("1"));
-      tokens.push(t.address);
-      const ifaceAgg = new ethers.utils.Interface(["function swap(address,address,uint256,uint256) returns (uint256)"]);
-      datas.push(ifaceAgg.encodeFunctionData("swap", [t.address, t.address, ethers.utils.parseEther("1"), 0]));
+        await t.waitForDeployment();
+      await t.mint(await user.getAddress(), ethers.parseEther("1"));
+      await t.connect(user).approve(permit2.target, ethers.parseEther("1"));
+      tokens.push(t.target);
+      const ifaceAgg = new ethers.Interface(["function swap(address,address,uint256,uint256) returns (uint256)"]);
+      datas.push(ifaceAgg.encodeFunctionData("swap", [t.target, t.target, ethers.parseEther("1"), 0]));
     }
 
     // Should not revert and should credit the user with target tokens
     await expect(
       sweeper.connect(user).sweepAndSwap(
-        permit2.address,
+        permit2.target,
         "0x",
         tokens,
         new Array(tokens.length).fill(0),
-        new Array(tokens.length).fill(ethers.constants.MaxUint256),
+        new Array(tokens.length).fill(ethers.MaxUint256),
         8,
         tokens[0],
         datas,

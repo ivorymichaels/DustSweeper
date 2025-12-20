@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import Web3Modal from 'web3modal'
-import { ethers } from 'ethers'
+import * as ethers from 'ethers'
 
 export default function WalletConnect({ onChange = () => {}, onChainChange = () => {} }) {
   const [connected, setConnected] = useState(false)
@@ -14,7 +14,7 @@ export default function WalletConnect({ onChange = () => {}, onChainChange = () 
     try {
       const modal = new Web3Modal({ cacheProvider: true })
       const instance = await modal.connect()
-      const provider = new ethers.providers.Web3Provider(instance)
+      const provider = new ethers.BrowserProvider(instance)
       const signer = provider.getSigner()
       const addr = await signer.getAddress()
       const network = await provider.getNetwork()

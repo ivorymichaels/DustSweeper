@@ -26,7 +26,7 @@
 
 */
 
-import { ethers } from 'ethers';
+import * as ethers from 'ethers';
 
 const COINGECKO_TTL = 60 * 1000; // 1 minute default cache TTL
 
@@ -90,7 +90,7 @@ const ERC20_ABI = [
  * Helper: normalize address to checksum lower-case standard
  */
 function normalize(address) {
-  try { return ethers.utils.getAddress(address); } catch (e) { return address; }
+  try { return ethers.getAddress(address); } catch (e) { return address; }
 }
 
 /**
@@ -104,7 +104,7 @@ async function tryChainlink(tokenAddress, opts) {
     const registry = new ethers.Contract(opts.chainlinkRegistryAddress, FEED_REGISTRY_ABI, provider);
     // Chainlink registry expects base, quote addresses. We'll use tokenAddress / USD (0x...)
     // NOTE: if your registry expects specific quote address for USD (e.g., 0x000...), set via opts.chainlinkUsdAddress
-    const quote = opts.chainlinkUsdAddress || ethers.constants.AddressZero;
+    const quote = opts.chainlinkUsdAddress || ethers.ZeroAddress;
     const token = normalize(tokenAddress);
     const res = await registry.latestRoundData(token, quote);
     // res[1] is int256 answer
@@ -112,7 +112,7 @@ async function tryChainlink(tokenAddress, opts) {
     if (!answer || answer.eq(0)) return null;
     // No decimals info from this minimal ABI; allow passing decimals via opts.chainlinkDecimals or assume 8
     const decimals = opts.chainlinkDecimals ?? 8;
-    const price = Number(ethers.utils.formatUnits(answer, decimals));
+    const price = Number(ethers.formatUnits(answer, decimals));
     return { price, source: 'chainlink', liquidityScore: 100 };
   } catch (err) {
     // console.debug('Chainlink lookup failed', err);
@@ -162,7 +162,7 @@ async function tryOnchainRouter(tokenAddress, chainId, opts) {
   if (!routerAddr || !stable) return null;
   try {
     const router = new ethers.Contract(routerAddr, UNISWAP_V2_ROUTER_ABI, provider);
-    const amountIn = ethers.utils.parseUnits('1', 18); // 1 token (we'll scale by decimals later)
+    const amountIn = ethers.parseUnits('1', 18); // 1 token (we'll scale by decimals later)
 
     // Determine decimals of token
     const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
@@ -171,7 +171,7 @@ async function tryOnchainRouter(tokenAddress, chainId, opts) {
 
     // Build path: token -> stable
     const path = [tokenAddress, stable];
-    const amounts = await router.getAmountsOut(ethers.utils.parseUnits('1', tokenDecimals), path);
+    const amounts = await router.getAmountsOut(ethers.parseUnits('1', tokenDecimals), path);
     if (!amounts || amounts.length === 0) return null;
     const amountOut = amounts[amounts.length - 1];
 
@@ -180,7 +180,7 @@ async function tryOnchainRouter(tokenAddress, chainId, opts) {
     let stableDecimals = 6;
     try { stableDecimals = await stableContract.decimals(); } catch (e) { stableDecimals = 6; }
 
-    const price = Number(ethers.utils.formatUnits(amountOut, stableDecimals));
+    const price = Number(ethers.formatUnits(amountOut, stableDecimals));
 
     // liquidityScore heuristic: inspect pair reserves if pair exists (UniswapV2 factory not provided)
     // We'll attempt to compute pair address using CREATE2 formula if factory and init code hash are provided in opts.
@@ -194,7 +194,7 @@ async function tryOnchainRouter(tokenAddress, chainId, opts) {
         // identify reserve for stable
         let reserveStable = token0.toLowerCase() === stable.toLowerCase() ? reserves.reserve0 : reserves.reserve1;
         // convert to USD approx
-        const reserveUsd = Number(ethers.utils.formatUnits(reserveStable, stableDecimals));
+        const reserveUsd = Number(ethers.formatUnits(reserveStable, stableDecimals));
         if (reserveUsd > 1_000_000) liquidityScore = 100;
         else if (reserveUsd > 100_000) liquidityScore = 80;
         else if (reserveUsd > 10_000) liquidityScore = 60;

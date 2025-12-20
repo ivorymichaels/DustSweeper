@@ -5,7 +5,7 @@ import ErrorBanner from '../components/ErrorBanner'
 import { getPriceUSD } from '../lib/price'
 import axios from 'axios'
 import { buildPermit2Signature, buildPermit2BatchSignature } from '../lib/permitBuilder'
-import { ethers } from 'ethers'
+import * as ethers from 'ethers'
 import { buildSwapTx } from '../lib/aggregator'
 import ConfirmationModal from '../components/ConfirmationModal'
 
@@ -65,9 +65,9 @@ export default function Sweeper() {
     // Use 1inch quote API to estimate output and gas
     try {
       const from = token.address
-      const to = targetToken === 'USDC' ? (chainId === 1 ? '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' : '') : ethers.constants.AddressZero
+      const to = targetToken === 'USDC' ? (chainId === 1 ? '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' : '') : ethers.ZeroAddress
       if (!to) return { amountOut: null, estimatedGas: null }
-      const url = `https://api.1inch.io/v5.0/${chainId}/quote?fromTokenAddress=${from}&toTokenAddress=${to}&amount=${ethers.utils.parseUnits('1', 18).toString()}`
+      const url = `https://api.1inch.io/v5.0/${chainId}/quote?fromTokenAddress=${from}&toTokenAddress=${to}&amount=${ethers.parseUnits('1', 18).toString()}`
       const resp = await axios.get(url)
       return { amountOut: resp.data.toTokenAmount, estimatedGas: resp.data.estimatedGas }
     } catch (err) {
@@ -94,13 +94,13 @@ export default function Sweeper() {
                   const t = new ethers.Contract(tokenObj.address, ['function balanceOf(address) view returns (uint256)'], providerOpts.provider)
                   const bal = await t.balanceOf(providerOpts.address)
                   return bal.toString()
-                } catch (_) { return ethers.utils.parseUnits('1', 18).toString() }
+                } catch (_) { return ethers.parseUnits('1', 18).toString() }
               })()
-            : ethers.utils.parseUnits('1', 18).toString()
+            : ethers.parseUnits('1', 18).toString()
 
           const toAddr = targetToken === 'USDC'
             ? (chainId === 1 ? '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' : '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174')
-            : ethers.constants.AddressZero
+            : ethers.ZeroAddress
 
           const swap = await buildSwapTx(addr, toAddr, amount, chainId, { fromAddress: providerOpts?.address, slippage: 1 })
           swapCalls.push({ token: addr, swap, amount })
@@ -193,14 +193,14 @@ export default function Sweeper() {
           const tokensArr = swapCalls.map(s=>s.token)
           const amountsArr = swapCalls.map(s=> s.amount ? s.amount.toString() : '0')
           const minPrices = tokensArr.map(_=>0)
-          const maxPrices = tokensArr.map(_=>ethers.constants.MaxUint256)
+          const maxPrices = tokensArr.map(_=>ethers.MaxUint256)
           const priceDecimals = 8
           // Resolve target token address from token list or fall back to known USDC addresses per chain
           const USDC_ADDRS = { 1: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', 137: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174' }
           const targetObj = tokens.find(t => t.symbol === targetToken)
-          const targetAddr = targetObj?.address || (targetToken === 'USDC' ? (USDC_ADDRS[chainId] || ethers.constants.AddressZero) : ethers.constants.AddressZero)
+          const targetAddr = targetObj?.address || (targetToken === 'USDC' ? (USDC_ADDRS[chainId] || ethers.ZeroAddress) : ethers.ZeroAddress)
           // build swapCallData
-          const swapCallData = swapCalls.map(s => s.swap ? s.swap.swap.data || s.swap.data || s.swap.raw?.tx?.data : '0x')
+          const swapCallData = swapCalls.map(s => s.swap ? s.swap.swap?.data || s.swap.data || s.swap.raw?.tx?.data : '0x')
           // prepare permit calldata from builder
           const sel = tokensArr
           let permitObj
@@ -211,15 +211,15 @@ export default function Sweeper() {
           }
           const permitCalldata = permitObj?.permitCalldata || '0x'
 
-          // sum native values
-          let totalValue = ethers.BigNumber.from(0)
+          // sum native values as bigint (ethers v6 accepts bigint values)
+          let totalValue = 0n
           for (const s of swapCalls) {
             const v = s.swap?.value || s.swap?.swap?.value || '0'
-            if (v && v !== '0') totalValue = totalValue.add(ethers.BigNumber.from(v))
+            if (v && v !== '0') totalValue += BigInt(v.toString())
           }
 
           const tx = await sweeper.sweepAndSwap(
-            permit2Address || ethers.constants.AddressZero,
+            permit2Address || ethers.ZeroAddress,
             permitCalldata,
             tokensArr,
             minPrices,
@@ -252,11 +252,11 @@ function TokenRow({ token, onSelect, chainId, targetToken, providerOpts }) {
     async function run() {
       if (!token.address) return
       try {
-        const toAddr = targetToken === 'USDC'
+          const toAddr = targetToken === 'USDC'
           ? (chainId === 1 ? '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' : '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174')
-          : ethers.constants.AddressZero
+          : ethers.ZeroAddress
 
-        const amount = ethers.utils.parseUnits('1', 18).toString()
+        const amount = ethers.parseUnits('1', 18).toString()
         const swap = await buildSwapTx(token.address, toAddr, amount, chainId, { fromAddress: providerOpts?.address, slippage: 1 })
         if (mounted) setEst({ amountOut: swap.expectedAmountOut, gas: swap.estimatedGas })
       } catch (e) { if (mounted) setEst(null) }

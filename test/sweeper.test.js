@@ -18,86 +18,86 @@ describe("Sweeper contract - unit tests (mocks)", function () {
     MockPriceOracle = await ethers.getContractFactory("MockPriceOracle");
 
     tokenA = await MockERC20.deploy("TokenA", "TKA");
-    await tokenA.deployed();
+    await tokenA.waitForDeployment();
     tokenB = await MockERC20.deploy("TokenB", "TKB");
-    await tokenB.deployed();
+    await tokenB.waitForDeployment();
     tokenC = await MockERC20.deploy("TokenC", "TKC");
-    await tokenC.deployed();
+    await tokenC.waitForDeployment();
 
     permit2 = await MockPermit2.deploy();
-    await permit2.deployed();
+    await permit2.waitForDeployment();
 
     aggregator = await MockAggregator.deploy();
-    await aggregator.deployed();
+    await aggregator.waitForDeployment();
 
     priceOracle = await MockPriceOracle.deploy();
-    await priceOracle.deployed();
+    await priceOracle.waitForDeployment();
 
   Sweeper = await ethers.getContractFactory("Sweeper");
   // Deploy Sweeper with priceOracle disabled by default (address(0)). Tests that need
   // on-chain price checks will enable the oracle explicitly.
-  sweeper = await Sweeper.deploy(aggregator.address, ethers.constants.AddressZero);
-    await sweeper.deployed();
+  sweeper = await Sweeper.deploy(aggregator.target, ethers.ZeroAddress);
+    await sweeper.waitForDeployment();
 
     // Mint tokens to user
-    await tokenA.mint(user.address, ethers.utils.parseEther("1000"));
-    await tokenC.mint(user.address, ethers.utils.parseEther("500"));
+    await tokenA.mint(await user.getAddress(), ethers.parseEther("1000"));
+    await tokenC.mint(await user.getAddress(), ethers.parseEther("500"));
   });
 
   it("happy path: sweep two tokens to a target token", async () => {
     // user approves permit2 to move tokenA and tokenC (simulating Permit2 effect)
-    await tokenA.connect(user).approve(permit2.address, ethers.utils.parseEther("1000"));
-    await tokenC.connect(user).approve(permit2.address, ethers.utils.parseEther("500"));
+    await tokenA.connect(user).approve(permit2.target, ethers.parseEther("1000"));
+    await tokenC.connect(user).approve(permit2.target, ethers.parseEther("500"));
 
     // Build aggregator calldata for each token (swap(from,to,amountIn,minOut))
-    const ifaceAgg = new ethers.utils.Interface(["function swap(address,address,uint256,uint256) returns (uint256)"]);
-    const amountA = ethers.utils.parseEther("10");
-    const amountC = ethers.utils.parseEther("5");
+    const ifaceAgg = new ethers.Interface(["function swap(address,address,uint256,uint256) returns (uint256)"]);
+    const amountA = ethers.parseEther("10");
+    const amountC = ethers.parseEther("5");
 
-    const dataA = ifaceAgg.encodeFunctionData("swap", [tokenA.address, tokenB.address, amountA, 0]);
-    const dataC = ifaceAgg.encodeFunctionData("swap", [tokenC.address, tokenB.address, amountC, 0]);
+    const dataA = ifaceAgg.encodeFunctionData("swap", [tokenA.target, tokenB.target, amountA, 0]);
+    const dataC = ifaceAgg.encodeFunctionData("swap", [tokenC.target, tokenB.target, amountC, 0]);
 
     // Call sweepAndSwap from user
     await expect(
       sweeper.connect(user).sweepAndSwap(
-        permit2.address,
+        permit2.target,
         "0x",
-        [tokenA.address, tokenC.address],
+        [tokenA.target, tokenC.target],
         [0, 0],
-        [ethers.constants.MaxUint256, ethers.constants.MaxUint256],
+        [ethers.MaxUint256, ethers.MaxUint256],
         8,
-        tokenB.address,
+        tokenB.target,
         [dataA, dataC],
         false
       )
     ).to.emit(sweeper, "Swept");
 
     // After sweep, user should have received some tokenB
-    const balB = await tokenB.balanceOf(user.address);
+    const balB = await tokenB.balanceOf(await user.getAddress());
     expect(balB).to.be.gt(0);
   });
 
   it("fails when price is out-of-range (using price oracle)", async () => {
   // Enable price oracle on the Sweeper and set price such that it is below minPrices
-  await sweeper.setPriceOracle(priceOracle.address);
-  await priceOracle.setPrice(tokenA.address, 1, 8); // price = 1
+  await sweeper.setPriceOracle(priceOracle.target);
+  await priceOracle.setPrice(tokenA.target, 1, 8); // price = 1
 
-    await tokenA.connect(user).approve(permit2.address, ethers.utils.parseEther("1000"));
+    await tokenA.connect(user).approve(permit2.target, ethers.parseEther("1000"));
 
-    const ifaceAgg = new ethers.utils.Interface(["function swap(address,address,uint256,uint256) returns (uint256)"]);
-    const amountA = ethers.utils.parseEther("1");
-    const dataA = ifaceAgg.encodeFunctionData("swap", [tokenA.address, tokenB.address, amountA, 0]);
+    const ifaceAgg = new ethers.Interface(["function swap(address,address,uint256,uint256) returns (uint256)"]);
+    const amountA = ethers.parseEther("1");
+    const dataA = ifaceAgg.encodeFunctionData("swap", [tokenA.target, tokenB.target, amountA, 0]);
 
     // min price 100 (in same decimals) -> fails
     await expect(
       sweeper.connect(user).sweepAndSwap(
-        permit2.address,
+        permit2.target,
         "0x",
-        [tokenA.address],
+        [tokenA.target],
         [100],
         [200],
         8,
-        tokenB.address,
+        tokenB.target,
         [dataA],
         false
       )
@@ -105,26 +105,26 @@ describe("Sweeper contract - unit tests (mocks)", function () {
   });
 
   it("aggregator low-liquidity revert triggers partial success behavior", async () => {
-    await tokenA.connect(user).approve(permit2.address, ethers.utils.parseEther("1000"));
-    await tokenC.connect(user).approve(permit2.address, ethers.utils.parseEther("500"));
+    await tokenA.connect(user).approve(permit2.target, ethers.parseEther("1000"));
+    await tokenC.connect(user).approve(permit2.target, ethers.parseEther("500"));
 
     // Make aggregator revert
     await aggregator.setShouldRevert(true);
 
-    const ifaceAgg = new ethers.utils.Interface(["function swap(address,address,uint256,uint256) returns (uint256)"]);
-    const dataA = ifaceAgg.encodeFunctionData("swap", [tokenA.address, tokenB.address, ethers.utils.parseEther("10"), 0]);
-    const dataC = ifaceAgg.encodeFunctionData("swap", [tokenC.address, tokenB.address, ethers.utils.parseEther("5"), 0]);
+    const ifaceAgg = new ethers.Interface(["function swap(address,address,uint256,uint256) returns (uint256)"]);
+    const dataA = ifaceAgg.encodeFunctionData("swap", [tokenA.target, tokenB.target, ethers.parseEther("10"), 0]);
+    const dataC = ifaceAgg.encodeFunctionData("swap", [tokenC.target, tokenB.target, ethers.parseEther("5"), 0]);
 
     // With partialSuccess = true, call should not revert overall; both tokens will be attempted
     await expect(
       sweeper.connect(user).sweepAndSwap(
-        permit2.address,
+        permit2.target,
         "0x",
-        [tokenA.address, tokenC.address],
+        [tokenA.target, tokenC.target],
         [0, 0],
-        [ethers.constants.MaxUint256, ethers.constants.MaxUint256],
+        [ethers.MaxUint256, ethers.MaxUint256],
         8,
-        tokenB.address,
+        tokenB.target,
         [dataA, dataC],
         true
       )
@@ -133,40 +133,40 @@ describe("Sweeper contract - unit tests (mocks)", function () {
 
   it("permit missing/expired causes transfer failure and respects partialSuccess", async () => {
     // Only approve tokenC, leave tokenA without approval
-    await tokenC.connect(user).approve(permit2.address, ethers.utils.parseEther("500"));
+    await tokenC.connect(user).approve(permit2.target, ethers.parseEther("500"));
 
-    const ifaceAgg = new ethers.utils.Interface(["function swap(address,address,uint256,uint256) returns (uint256)"]);
-    const dataA = ifaceAgg.encodeFunctionData("swap", [tokenA.address, tokenB.address, ethers.utils.parseEther("10"), 0]);
-    const dataC = ifaceAgg.encodeFunctionData("swap", [tokenC.address, tokenB.address, ethers.utils.parseEther("5"), 0]);
+    const ifaceAgg = new ethers.Interface(["function swap(address,address,uint256,uint256) returns (uint256)"]);
+    const dataA = ifaceAgg.encodeFunctionData("swap", [tokenA.target, tokenB.target, ethers.parseEther("10"), 0]);
+    const dataC = ifaceAgg.encodeFunctionData("swap", [tokenC.target, tokenB.target, ethers.parseEther("5"), 0]);
 
     // partialSuccess = true should allow tokenC to succeed while tokenA fails
     await expect(
       sweeper.connect(user).sweepAndSwap(
-        permit2.address,
+        permit2.target,
         "0x",
-        [tokenA.address, tokenC.address],
+        [tokenA.target, tokenC.target],
         [0, 0],
-        [ethers.constants.MaxUint256, ethers.constants.MaxUint256],
+        [ethers.MaxUint256, ethers.MaxUint256],
         8,
-        tokenB.address,
+        tokenB.target,
         [dataA, dataC],
         true
       )
     ).to.not.be.reverted;
 
-    const balB = await tokenB.balanceOf(user.address);
+    const balB = await tokenB.balanceOf(await user.getAddress());
     expect(balB).to.be.gt(0);
 
     // partialSuccess = false should revert due to tokenA permit failure
     await expect(
       sweeper.connect(user).sweepAndSwap(
-        permit2.address,
+        permit2.target,
         "0x",
-        [tokenA.address, tokenC.address],
+        [tokenA.target, tokenC.target],
         [0, 0],
-        [ethers.constants.MaxUint256, ethers.constants.MaxUint256],
+        [ethers.MaxUint256, ethers.MaxUint256],
         8,
-        tokenB.address,
+        tokenB.target,
         [dataA, dataC],
         false
       )
