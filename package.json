@@ -5,7 +5,7 @@
   "scripts": {
     "test": "hardhat test",
     "deploy": "hardhat run scripts/deploy.js --network ${NETWORK:-hardhat}",
-    "lint": "eslint -c .eslintrc.json . --ext .js,.jsx,.ts,.tsx || true"
+    "lint": "eslint -c .eslintrc.json test "src" frontend/src --ext .js,.jsx,.ts,.tsx || true"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",

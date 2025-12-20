@@ -1,0 +1,8 @@
+node_modules
+frontend/dist
+dist
+frontend/node_modules
+**/*.min.js
+*.lock
+.vite
+coverage
