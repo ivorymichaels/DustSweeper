@@ -5,7 +5,7 @@
   "scripts": {
     "test": "hardhat test",
     "deploy": "hardhat run scripts/deploy.js --network ${NETWORK:-hardhat}",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx || true"
+    "lint": "eslint -c .eslintrc.json . --ext .js,.jsx,.ts,.tsx || true"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
@@ -23,6 +23,8 @@
     "@types/node": "^25.0.3",
     "chai": "^4.3.7",
     "dotenv": "^16.0.0",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.37.5",
     "ethers": "^6.16.0",
     "hardhat": "^2.17.0",
     "hardhat-gas-reporter": "^2.3.0",

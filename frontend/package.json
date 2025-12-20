@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint src --ext .js,.jsx || true",
+    "lint": "eslint -c ../.eslintrc.json src --ext .js,.jsx || true",
     "price:demo": "node ./scripts/price-runner.js"
   },
   "dependencies": {
@@ -14,10 +14,12 @@
     "ethers": "^6.16.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-  "web3modal": "^1.9.8"
+    "web3modal": "^1.9.8"
   },
   "devDependencies": {
-    "vite": "^5.0.0",
-    "@vitejs/plugin-react": "^4.0.0"
+    "@vitejs/plugin-react": "^4.0.0",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.37.5",
+    "vite": "^5.0.0"
   }
 }
