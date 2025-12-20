@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "lint": "eslint src --ext .js,.jsx || true",
     "price:demo": "node ./scripts/price-runner.js"
   },
   "dependencies": {

@@ -5,7 +5,7 @@
   "scripts": {
     "test": "hardhat test",
     "deploy": "hardhat run scripts/deploy.js --network ${NETWORK:-hardhat}",
-    "lint": "echo \"No linter configured\""
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx || true"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
